@@ -1,0 +1,46 @@
+
+name: Build Vortex Boost APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositorio
+        uses: actions/checkout@v4
+
+      - name: Extrair projeto
+        run: |
+          unzip -o VortexBoost-Android-Project-v1.1.zip
+          test -d VortexBoost
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Android
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar SDK
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Compilar APK
+        working-directory: VortexBoost
+        run: gradle assembleDebug --no-daemon
+
+      - name: Salvar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Vortex-Boost-debug-apk
+          path: VortexBoost/app/build/outputs/apk/debug/app-debug.apk
