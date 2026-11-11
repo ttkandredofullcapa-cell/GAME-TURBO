@@ -26,24 +26,31 @@ jobs:
           java-version: '17'
 
       - name: Configurar Android SDK
-        uses: android-actions/setup-android@v3
+        run: |
+          SDK="$ANDROID_HOME"
+          SDKMANAGER=$(find "$SDK/cmdline-tools" -type f -name sdkmanager | head -n 1)
+          test -n "$SDKMANAGER"
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
 
       - name: Instalar componentes Android
         run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager --install "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          yes | "$SDKMANAGER" --licenses || true
+          "$SDKMANAGER" --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
 
-      - name: Corrigir compatibilidade Java e Kotlin
+      - name: Corrigir Java e Kotlin
         working-directory: VortexBoost
         run: |
           python3 - <<'PY'
           from pathlib import Path
-
           p = Path("app/build.gradle.kts")
           s = p.read_text()
-          s = s.replace(
-              "android {\n",
-              """android {
+          if "sourceCompatibility = JavaVersion.VERSION_17" not in s:
+              s = s.replace("android {\n", """android {
               compileOptions {
                   sourceCompatibility = JavaVersion.VERSION_17
                   targetCompatibility = JavaVersion.VERSION_17
@@ -51,9 +58,7 @@ jobs:
               kotlinOptions {
                   jvmTarget = "17"
               }
-          """,
-              1
-          )
+          """, 1)
           p.write_text(s)
           PY
 
